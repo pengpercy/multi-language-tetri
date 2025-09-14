@@ -86,21 +86,35 @@ fi
 echo "   - simple: Basic version with minimal text"
 echo ""
 
-# Ask user which version to build
+# Ask user which version to build (with timeout for non-interactive)
 if [ "$TTF_AVAILABLE" = true ]; then
     echo "🤔 Which version would you like to build?"
     echo "   1) improved - Bitmap fonts (recommended, no TTF needed)"
     echo "   2) fixed    - TrueType fonts with Chinese support"
     echo "   3) full     - Complete TrueType version"
     echo "   4) simple   - Basic version"
-    read -p "Enter choice (1-4) [1]: " choice
-    choice=${choice:-1}
+
+    # Check if running interactively
+    if [ -t 0 ] && [ -t 1 ]; then
+        read -p "Enter choice (1-4) [1]: " choice
+        choice=${choice:-1}
+    else
+        echo "Non-interactive mode detected - using default: improved version"
+        choice=1
+    fi
 else
     echo "🤔 Which version would you like to build?"
     echo "   1) improved - Bitmap fonts (recommended)"
     echo "   2) simple   - Basic version"
-    read -p "Enter choice (1-2) [1]: " choice
-    choice=${choice:-1}
+
+    # Check if running interactively
+    if [ -t 0 ] && [ -t 1 ]; then
+        read -p "Enter choice (1-2) [1]: " choice
+        choice=${choice:-1}
+    else
+        echo "Non-interactive mode detected - using default: improved version"
+        choice=1
+    fi
 fi
 
 echo ""
@@ -209,11 +223,34 @@ case $VERSION in
 esac
 echo ""
 
-# Ask user if they want to run the game
-read -p "🚀 Run the game now? (y/N): " -n 1 -r
-echo
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-    echo "🎮 Starting Tetris..."
+# Check if running in interactive mode
+if [ -t 0 ] && [ -t 1 ]; then
+    # Interactive mode - ask user if they want to run the game
+    read -p "🚀 Run the game now? (y/N): " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        echo "🎮 Starting Tetris..."
+        echo ""
+        echo "Controls:"
+        echo "  ← → : Move piece"
+        echo "  ↑   : Rotate piece"
+        echo "  ↓   : Soft drop"
+        echo "  Space: Hard drop"
+        echo "  P   : Pause/Start"
+        echo "  R   : Reset game"
+        echo "  +/- : Adjust level"
+        echo "  L   : Switch language"
+        echo ""
+        echo "Press any key to start the game, then press P to begin playing..."
+        $EXECUTABLE
+    else
+        echo "Game built successfully! Run with: $EXECUTABLE"
+    fi
+else
+    # Non-interactive mode - just show completion message
+    echo "🎉 Build completed successfully!"
+    echo "   Executable: $EXECUTABLE"
+    echo "   To run: cd $(pwd) && $EXECUTABLE"
     echo ""
     echo "Controls:"
     echo "  ← → : Move piece"
@@ -224,11 +261,6 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo "  R   : Reset game"
     echo "  +/- : Adjust level"
     echo "  L   : Switch language"
-    echo ""
-    echo "Press any key to start the game, then press P to begin playing..."
-    $EXECUTABLE
-else
-    echo "Game built successfully! Run with: $EXECUTABLE"
 fi
 
 echo ""

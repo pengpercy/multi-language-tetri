@@ -29,15 +29,15 @@ endif
 SIMPLE_TARGET = tetris_simple
 SIMPLE_SOURCE = tetris_simple.c
 FULL_TARGET = tetris_full
-FULL_SOURCE = tetris.c
+FULL_SOURCE = tetris_fixed.c
 FIXED_TARGET = tetris_fixed
 FIXED_SOURCE = tetris_fixed.c
 IMPROVED_TARGET = tetris
 IMPROVED_SOURCE = tetris_improved.c
 FULL_FIXED_TARGET = tetris_full_fixed
-FULL_FIXED_SOURCE = tetris_full_fixed.c
+FULL_FIXED_SOURCE = tetris_fixed.c
 DEBUG_TARGET = tetris_fixed_debug
-DEBUG_SOURCE = tetris_fixed_debug.c
+DEBUG_SOURCE = tetris_fixed.c
 
 .PHONY: all clean install deps simple full fixed improved full_fixed debug test_font test_text
 
