@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <RuntimeIdentifiers>osx-x64;osx-arm64;linux-x64;win-x64</RuntimeIdentifiers>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <PublishAot>true</PublishAot>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <OptimizationPreference>Speed</OptimizationPreference>
+    <IlcOptimizationPreference>Speed</IlcOptimizationPreference>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <!-- Release优化配置 -->
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
+    <!-- AOT优化 -->
+    <PublishAot>true</PublishAot>
+    <PublishTrimmed>true</PublishTrimmed>
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <RuntimeIdentifier>osx-x64</RuntimeIdentifier>
+
+    <!-- 性能优化 -->
+    <OptimizationPreference>Speed</OptimizationPreference>
+    <IlcOptimizationPreference>Speed</IlcOptimizationPreference>
+    <IlcFoldIdenticalMethodBodies>true</IlcFoldIdenticalMethodBodies>
+
+    <!-- 体积优化 -->
+    <TrimMode>full</TrimMode>
+
+    <IlcDisableReflection>true</IlcDisableReflection>
+    <EventSourceSupport>false</EventSourceSupport>
+    <UseSystemResourceKeys>true</UseSystemResourceKeys>
+    <DebuggerSupport>false</DebuggerSupport>
+    <EnableUnsafeUTF7Encoding>false</EnableUnsafeUTF7Encoding>
+    <InvariantGlobalization>true</InvariantGlobalization>
+
+    <!-- 去除调试信息 -->
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ppy.SDL2-CS" Version="1.0.82" />
+  </ItemGroup>
+
+  <!-- 保护SDL2库不被Trimmer移除 -->
+  <ItemGroup Condition="'$(Configuration)'=='Release'">
+    <TrimmerRootAssembly Include="SDL2-CS" />
+  </ItemGroup>
+
+</Project>

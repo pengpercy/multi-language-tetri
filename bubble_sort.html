@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>冒泡排序动画演示</title>
+        <style>
+                :root{
+                  --bg:#0f1724;
+                  --bar:#60a5fa;
+                  --bar-swap:#f97316;
+                  --bar-compare:#a78bfa;
+                  --text:#e6eef8;
+                  --gap:8px;
+                }
+                html,body{height:100%;margin:0;background:linear-gradient(180deg,#071022 0%,var(--bg)
+            100%);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial;}
+                .wrap{max-width:980px;margin:32px auto;padding:20px;}
+                header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+                h1{font-size:18px;margin:0}
+                .controls{display:flex;gap:12px;align-items:center}
+                .control{display:flex;flex-direction:column;font-size:13px}
+                input[type=range]{width:180px}
+                .board{margin-top:22px;background:rgba(255,255,255,0.02);padding:18px;border-radius:12px;min-height:320px;display:flex;align-items:center;justify-con
+            tent:center;position:relative;overflow:hidden}
+                .bars{display:flex;align-items:flex-end;gap:var(--gap);width:100%;height:260px;padding:0 10px;box-sizing:border-box}
+                .bar{
+                  --h:40px;
+                  background:linear-gradient(180deg,#9be7ff, var(--bar));
+                  width:calc((100% / var(--n)) - var(--gap));
+                  height:var(--h);
+                  border-radius:8px;
+                  display:flex;align-items:flex-end;justify-content:center;position:relative;
+                  transition: transform var(--t) cubic-bezier(.22,.9,.35,1), height var(--t) cubic-bezier(.22,.9,.35,1), background-color var(--t);
+                  box-shadow: 0 6px 18px rgba(2,6,23,0.6), inset 0 -8px 24px rgba(0,0,0,0.12);
+                  user-select:none;
+                }
+                .bar .val{font-size:12px;padding:6px;color:#021124;font-weight:600}
+                .bar.compare{background:linear-gradient(180deg,#f3e8ff,var(--bar-compare));transform:translateY(-6px)}
+                .bar.swap{background:linear-gradient(180deg,#ffe7d6,var(--bar-swap));transform:translateY(-10px)}
+                .legend{position:absolute;right:16px;top:16px;background:rgba(255,255,255,0.03);padding:8px;border-radius:8px;font-size:13px}
+                .btns{display:flex;gap:8px;align-items:center}
+                button{background:linear-gradient(180deg,#0ea5e966,#0369a166);border:none;padding:8px
+            12px;border-radius:8px;color:var(--text);cursor:pointer;font-weight:600}
+                button:disabled{opacity:0.35;cursor:not-allowed}
+                footer{margin-top:14px;font-size:13px;color:rgba(230,238,248,0.7)}
+                .overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+                .arrow{position:absolute;left:50%;top:18px;transform:translateX(-50%);font-size:13px;color:rgba(230,238,248,0.75)}
+                @media (max-width:640px){.bars{height:180px}}
+        </style>
+    </head>
+    <body>
+        <div class="wrap">
+            <header>
+                <h1>冒泡排序（Bubble Sort）动效演示</h1>
+                <div class="controls">
+                    <div class="control">
+                        <label for="count"
+                            >数量 <span id="countVal">12</span></label
+                        >
+                        <input
+                            id="count"
+                            type="range"
+                            min="5"
+                            max="40"
+                            value="12"
+                        />
+                    </div>
+                    <div class="control">
+                        <label for="speed"
+                            >速度 <span id="speedVal">1.0x</span></label
+                        >
+                        <input
+                            id="speed"
+                            type="range"
+                            min="0.25"
+                            max="3"
+                            step="0.05"
+                            value="1"
+                        />
+                    </div>
+                    <div class="btns">
+                        <button id="shuffle">随机数组</button>
+                        <button id="start">开始</button>
+                        <button id="pause" disabled>暂停</button>
+                        <button id="step" disabled>步进</button>
+                    </div>
+                </div>
+            </header>
+
+            <div class="board" id="board">
+                <div class="bars" id="bars" style="--n: 12"></div>
+                <div class="legend" id="legend">比较：紫色 换位：橙色</div>
+            </div>
+
+            <footer>
+                使用平滑的时间插值与 requestAnimationFrame
+                保证动画丝滑自然。可调速度与数量。
+            </footer>
+        </div>
+
+        <script>
+            const $ = (id) => document.getElementById(id);
+            const barsEl = $("bars");
+            const countInput = $("count");
+            const speedInput = $("speed");
+            const countVal = $("countVal");
+            const speedVal = $("speedVal");
+            const shuffleBtn = $("shuffle");
+            const startBtn = $("start");
+            const pauseBtn = $("pause");
+            const stepBtn = $("step");
+
+            let arr = [];
+            let states = []; // 'idle' | 'compare' | 'swap' | 'done'
+            let n = +countInput.value;
+            let speed = +speedInput.value;
+            let animating = false;
+            let paused = false;
+            let raf = null;
+            let resolver = null;
+
+            function randArray(m) {
+                const a = Array.from(
+                    { length: m },
+                    (_, i) => Math.floor(Math.random() * 90) + 10,
+                );
+                return a;
+            }
+
+            function render() {
+                barsEl.style.setProperty("--n", n);
+                barsEl.innerHTML = "";
+                const max = Math.max(...arr);
+                for (let i = 0; i < n; i++) {
+                    const v = arr[i];
+                    const h = Math.max(
+                        18,
+                        Math.round((v / max) * (barsEl.clientHeight - 24)),
+                    );
+                    const d = document.createElement("div");
+                    d.className = "bar " + (states[i] || "");
+                    d.style.height = h + "px";
+                    d.style.setProperty("--t", 0.4 / speed + "s");
+                    d.innerHTML = `<div class="val">${v}</div>`;
+                    barsEl.appendChild(d);
+                }
+            }
+
+            function shuffle() {
+                arr = randArray(n);
+                states = Array(n).fill("idle");
+                render();
+            }
+
+            function sleep(ms) {
+                return new Promise((r) => setTimeout(r, ms));
+            }
+
+            function enableControls(enabled) {
+                startBtn.disabled = !enabled;
+                shuffleBtn.disabled = !enabled;
+                countInput.disabled = !enabled;
+                speedInput.disabled = !enabled;
+                stepBtn.disabled = !enabled;
+            }
+
+            // Smooth swap by animating transform offsets
+            async function animateSwap(i, j) {
+                const children = Array.from(barsEl.children);
+                const a = children[i];
+                const b = children[j];
+                if (!a || !b) return;
+                const rectA = a.getBoundingClientRect();
+                const rectB = b.getBoundingClientRect();
+                const dx = rectB.left - rectA.left;
+
+                a.style.transition = `transform ${0.45 / speed}s cubic-bezier(.22,.9,.35,1)`;
+                b.style.transition = `transform ${0.45 / speed}s cubic-bezier(.22,.9,.35,1)`;
+                a.style.transform = `translateX(${dx}px)`;
+                b.style.transform = `translateX(${-dx}px)`;
+                await sleep(450 / speed);
+                a.style.transition = "";
+                b.style.transition = "";
+                a.style.transform = "";
+                b.style.transform = "";
+
+                // swap in DOM to preserve layout (replace nodes)
+                if (j > i) {
+                    barsEl.insertBefore(b, a);
+                    barsEl.insertBefore(a, barsEl.children[i]);
+                } else {
+                    barsEl.insertBefore(a, b);
+                    barsEl.insertBefore(b, barsEl.children[j]);
+                }
+            }
+
+            async function bubbleSortAnimated() {
+                animating = true;
+                enableControls(false);
+                pauseBtn.disabled = false;
+                stepBtn.disabled = false;
+                for (let end = n - 1; end > 0; end--) {
+                    let swapped = false;
+                    for (let i = 0; i < end; i++) {
+                        while (paused) {
+                            await new Promise((r) => setTimeout(r, 50));
+                        }
+                        states[i] = "compare";
+                        states[i + 1] = "compare";
+                        render();
+                        await sleep(220 / speed);
+
+                        if (arr[i] > arr[i + 1]) {
+                            states[i] = "swap";
+                            states[i + 1] = "swap";
+                            render();
+                            await animateSwap(i, i + 1);
+                            // swap data
+                            const tmp = arr[i];
+                            arr[i] = arr[i + 1];
+                            arr[i + 1] = tmp;
+                            // reflect swap in states and DOM by re-rendering heights
+                            states[i] = states[i + 1] = "idle";
+                            render();
+                            swapped = true;
+                            await sleep(90 / speed);
+                        }
+
+                        states[i] = states[i + 1] = "idle";
+                        render();
+                        await sleep(60 / speed);
+                    }
+                    states[end] = "done";
+                    render();
+                    if (!swapped) {
+                        for (let k = 0; k <= end; k++) states[k] = "done";
+                        render();
+                        break;
+                    }
+                }
+                animating = false;
+                pauseBtn.disabled = true;
+                stepBtn.disabled = true;
+                enableControls(true);
+            }
+
+            // stepping variant: run until next comparison/swap then pause
+            let stepResolve = null;
+            async function bubbleSortStepwise() {
+                if (animating) return;
+                animating = true;
+                enableControls(false);
+                pauseBtn.disabled = false;
+                stepBtn.disabled = false;
+                for (let end = n - 1; end > 0; end--) {
+                    let swapped = false;
+                    for (let i = 0; i < end; i++) {
+                        states[i] = "compare";
+                        states[i + 1] = "compare";
+                        render();
+                        await waitForStepOrContinue(220);
+
+                        if (arr[i] > arr[i + 1]) {
+                            states[i] = "swap";
+                            states[i + 1] = "swap";
+                            render();
+                            await animateSwap(i, i + 1);
+                            const tmp = arr[i];
+                            arr[i] = arr[i + 1];
+                            arr[i + 1] = tmp;
+                            states[i] = states[i + 1] = "idle";
+                            render();
+                            swapped = true;
+                            await waitForStepOrContinue(90);
+                        }
+
+                        states[i] = states[i + 1] = "idle";
+                        render();
+                        await waitForStepOrContinue(60);
+                    }
+                    states[end] = "done";
+                    render();
+                    if (!swapped) {
+                        for (let k = 0; k <= end; k++) states[k] = "done";
+                        render();
+                        break;
+                    }
+                }
+                animating = false;
+                enableControls(true);
+                pauseBtn.disabled = true;
+                stepBtn.disabled = true;
+            }
+
+            function waitForStepOrContinue(ms) {
+                return new Promise(async (res) => {
+                    const start = performance.now();
+                    function loop() {
+                        if (paused) {
+                            stepResolve = () => res();
+                            return;
+                        }
+                        if (performance.now() - start >= ms / speed)
+                            return res();
+                        requestAnimationFrame(loop);
+                    }
+                    loop();
+                });
+            }
+
+            // Event wiring
+            countInput.addEventListener("input", (e) => {
+                n = +e.target.value;
+                countVal.textContent = n;
+                barsEl.style.setProperty("--n", n);
+                shuffle();
+            });
+            speedInput.addEventListener("input", (e) => {
+                speed = +e.target.value;
+                speedVal.textContent = speed.toFixed(2) + "x";
+                render();
+            });
+            shuffleBtn.addEventListener("click", () => {
+                shuffle();
+            });
+
+            startBtn.addEventListener("click", async () => {
+                if (animating) return;
+                paused = false;
+                await bubbleSortAnimated();
+            });
+            pauseBtn.addEventListener("click", () => {
+                if (!animating) return;
+                paused = !paused;
+                pauseBtn.textContent = paused ? "继续" : "暂停";
+                if (!paused && stepResolve) {
+                    stepResolve();
+                    stepResolve = null;
+                }
+            });
+            stepBtn.addEventListener("click", async () => {
+                if (!animating) {
+                    // start stepwise mode
+                    paused = true;
+                    bubbleSortStepwise();
+                    return;
+                }
+                if (paused && stepResolve) {
+                    const r = stepResolve;
+                    stepResolve = null;
+                    r();
+                }
+            });
+
+            // Init
+            countVal.textContent = n;
+            speedVal.textContent = speed.toFixed(2) + "x";
+            shuffle();
+            window.addEventListener("resize", () => render());
+        </script>
+    </body>
+</html>
